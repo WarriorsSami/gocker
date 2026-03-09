@@ -77,51 +77,27 @@ By the end, you should be able to explain the core ideas behind Docker without t
 ```text
 .
 ├── cmd/
-│   └── gocker/
-│       └── main.go
+│   ├── root.go
+│   └── run.go
+├── docs/
+│   ├── stage-01-basic-process-execution.md
+│   └── stage-02-child-reexec-model.md
 ├── internal/
-│   ├── cli/
-│   ├── runtime/
-│   ├── isolate/
-│   ├── cgroups/
-│   ├── image/
-│   ├── rootfs/
-│   ├── store/
-│   └── testutil/
-├── testdata/
+│   └── runtime/
+│       └── run_host.go
 ├── go.mod
-├── Makefile
+├── go.sum
+├── main.go
 └── README.md
 ```
 
 ### Package overview
 
-#### `cmd/gocker`
-CLI entrypoint.
-
-#### `internal/cli`
-Argument parsing and command dispatch.
+#### `cmd`
+CLI entrypoint and command definitions. `root.go` sets up the cobra root command; `run.go` implements `gocker run`.
 
 #### `internal/runtime`
-High-level orchestration for container lifecycle.
-
-#### `internal/isolate`
-Namespace selection, mounts, hostname setup, and root filesystem isolation.
-
-#### `internal/cgroups`
-Resource controls using cgroup v2.
-
-#### `internal/image`
-Image reference parsing, registry interactions, manifests, configs, and layers.
-
-#### `internal/rootfs`
-Layer unpacking and root filesystem assembly.
-
-#### `internal/store`
-Local metadata for images and containers.
-
-#### `internal/testutil`
-Linux-only integration helpers and fixtures.
+Host-side process execution logic. `run_host.go` spawns the child process, forwards stdio, and propagates the exit code.
 
 ---
 
@@ -423,18 +399,14 @@ Potential next steps after the core runtime works:
 
 ## Personal learning notes
 
-A useful way to approach this project is to treat each stage like a lab.
+Each stage is documented as a small lab note in the [`docs/`](docs/) folder.
 
-For every milestone, answer:
+| Stage | File |
+|-------|------|
+| 1 — Basic process execution | [docs/stage-01-basic-process-execution.md](docs/stage-01-basic-process-execution.md) |
+| 2 — Child re-exec model | [docs/stage-02-child-reexec-model.md](docs/stage-02-child-reexec-model.md) |
 
-- What did I expect the kernel to do?
-- What did it actually do?
-- What changed from the process point of view?
-- What single command proves the feature works?
-
-That discipline turns the project from "I copied some syscalls" into genuine systems understanding.
-
----
+Every note follows the same four-section format: **Goal**, **Build**, **Verify**, **Learn**.
 
 ## License
 
