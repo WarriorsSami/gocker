@@ -66,6 +66,7 @@ func run(t *testing.T, args ...string) (out string, code int) {
 // TestReexec_SimpleOutput verifies that a command run through the re-exec
 // path produces the expected output and exits 0.
 func TestReexec_SimpleOutput(t *testing.T) {
+	t.Parallel()
 	out, code := run(t, "run", "--", "echo", "hello from gocker")
 	if code != 0 {
 		t.Fatalf("expected exit code 0, got %d\noutput: %s", code, out)
@@ -78,9 +79,11 @@ func TestReexec_SimpleOutput(t *testing.T) {
 // TestReexec_ExitCodePropagation verifies that the child's exit code is
 // forwarded correctly through the re-exec and pipe-sync layer.
 func TestReexec_ExitCodePropagation(t *testing.T) {
+	t.Parallel()
 	cases := []int{0, 1, 2, 42, 127}
 	for _, want := range cases {
 		t.Run(strconv.Itoa(want), func(t *testing.T) {
+			t.Parallel()
 			_, got := run(t, "run", "--", "sh", "-c", "exit "+strconv.Itoa(want))
 			if got != want {
 				t.Errorf("exit code: want %d, got %d", want, got)
@@ -92,6 +95,7 @@ func TestReexec_ExitCodePropagation(t *testing.T) {
 // TestReexec_MultipleArgsForwarded verifies that all extra arguments reach the
 // command unchanged.
 func TestReexec_MultipleArgsForwarded(t *testing.T) {
+	t.Parallel()
 	out, code := run(t, "run", "--", "sh", "-c", "echo $((6*7))")
 	if code != 0 {
 		t.Fatalf("expected exit code 0, got %d\noutput: %s", code, out)
@@ -104,6 +108,7 @@ func TestReexec_MultipleArgsForwarded(t *testing.T) {
 // TestReexec_CommandNotFound verifies that a missing binary returns a non-zero
 // exit code rather than hanging or panicking.
 func TestReexec_CommandNotFound(t *testing.T) {
+	t.Parallel()
 	_, code := run(t, "run", "--", "this-binary-does-not-exist-xyz")
 	if code == 0 {
 		t.Fatal("expected non-zero exit code for a missing command, got 0")
@@ -113,6 +118,7 @@ func TestReexec_CommandNotFound(t *testing.T) {
 // TestReexec_ChildDirectCallRejected verifies that the hidden child subcommand
 // cannot be invoked directly — fd 3 is not open in a plain user invocation.
 func TestReexec_ChildDirectCallRejected(t *testing.T) {
+	t.Parallel()
 	_, code := run(t, "child", "echo", "should not execute")
 	if code == 0 {
 		t.Fatal("expected non-zero exit code when calling child without fd 3 open, got 0")
@@ -122,6 +128,7 @@ func TestReexec_ChildDirectCallRejected(t *testing.T) {
 // TestReexec_ContextCancellation verifies that cancelling the context
 // terminates the child process promptly.
 func TestReexec_ContextCancellation(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // cancel before the process even starts
 
