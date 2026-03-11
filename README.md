@@ -1,6 +1,6 @@
 # Gocker
 
-![CI](https://github.com/samibarbutdica/gocker/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/WarriorsSami/gocker/actions/workflows/ci.yml/badge.svg?branch=master)
 
 A minimal Docker-like container runtime built in Go for learning how containers actually work under the hood.
 
