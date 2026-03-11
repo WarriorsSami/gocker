@@ -23,11 +23,11 @@ Example:
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		req := runtime.RunHostRequest{
+		req := runtime.RunCmdRequest{
 			Command: args[0],
 			Args:    args[1:],
 		}
-		return runtime.RunHost(cmd.Context(), req)
+		return runtime.RunParent(cmd.Context(), req)
 	},
 }
 
