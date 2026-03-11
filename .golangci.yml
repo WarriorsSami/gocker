@@ -1,0 +1,19 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck       # unchecked errors
+    - govet          # Go vet checks
+    - ineffassign    # assignments with no effect
+    - staticcheck    # advanced static analysis (includes gosimple)
+    - unused         # unused code
+    - misspell       # common spelling mistakes in comments/strings
+
+linters-settings:
+  govet:
+    enable-all: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

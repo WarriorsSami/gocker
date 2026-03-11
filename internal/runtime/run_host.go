@@ -61,7 +61,7 @@ func RunChild(ctx context.Context, req RunCmdRequest) error {
 	must(syscall.Close(3))
 
 	// Perform any child-side setup if needed
-	
+
 	// Exec the target command, replacing the child process
 	path, err := exec.LookPath(req.Command)
 	if err != nil {

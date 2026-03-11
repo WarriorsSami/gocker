@@ -1,5 +1,7 @@
 # Gocker
 
+![CI](https://github.com/samibarbutdica/gocker/actions/workflows/ci.yml/badge.svg)
+
 A minimal Docker-like container runtime built in Go for learning how containers actually work under the hood.
 
 This project is a hands-on exploration of the Linux primitives behind Docker: namespaces, mounts, `chroot`/`pivot_root`, cgroups, root filesystems, image layers, and container process lifecycle management.
@@ -76,7 +78,11 @@ By the end, you should be able to explain the core ideas behind Docker without t
 
 ```text
 .
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── cmd/
+│   ├── child.go
 │   ├── root.go
 │   └── run.go
 ├── docs/
@@ -85,9 +91,16 @@ By the end, you should be able to explain the core ideas behind Docker without t
 ├── internal/
 │   └── runtime/
 │       └── run_host.go
+├── scripts/
+│   └── pre-commit
+├── tests/
+│   └── integration/
+│       └── reexec_test.go
+├── .golangci.yml
 ├── go.mod
 ├── go.sum
 ├── main.go
+├── Makefile
 └── README.md
 ```
 
@@ -98,6 +111,12 @@ CLI entrypoint and command definitions. `root.go` sets up the cobra root command
 
 #### `internal/runtime`
 Host-side process execution logic. `run_host.go` spawns the child process, forwards stdio, and propagates the exit code.
+
+#### `scripts`
+Development tooling scripts. `pre-commit` mirrors the full CI pipeline locally and is installed into `.git/hooks/` via `make install-hooks`.
+
+#### `tests/integration`
+End-to-end tests that exercise the compiled gocker binary. Requires `go build -o gocker .` before running.
 
 ---
 
@@ -171,67 +190,53 @@ This project progressively adds:
 
 The project is implemented in stages.
 
-### Stage 1 — Basic process execution
+- [x] **Stage 1 — Basic process execution**
+  - [x] forward stdio
+  - [x] propagate exit codes
 
-`gocker run -- echo hello`
+- [x] **Stage 2 — Child re-exec model**
+  - [x] parent starts child through `/proc/self/exe`
+  - [x] child performs isolation setup before exec
 
-- forward stdio,
-- propagate exit codes.
+- [ ] **Stage 3 — UTS namespace** ← next
+  - [ ] isolate hostname
+  - [ ] verify container-local hostname changes
 
-### Stage 2 — Child re-exec model
+- [ ] **Stage 4 — PID namespace**
+  - [ ] isolate process tree
+  - [ ] observe container-local PIDs
 
-- parent starts child through `/proc/self/exe`,
-- child performs isolation setup before exec.
+- [ ] **Stage 5 — Mount namespace and `/proc`**
+  - [ ] create mount isolation
+  - [ ] mount `/proc` inside container
 
-### Stage 3 — UTS namespace
+- [ ] **Stage 6 — Rootfs execution**
+  - [ ] run commands inside a provided root filesystem
 
-- isolate hostname,
-- verify container-local hostname changes.
+- [ ] **Stage 7 — Cgroups v2**
+  - [ ] apply memory and CPU-related limits
 
-### Stage 4 — PID namespace
+- [ ] **Stage 8 — Metadata store**
+  - [ ] persist basic information for containers and images
 
-- isolate process tree,
-- observe container-local PIDs.
+- [ ] **Stage 9 — Image pulling**
+  - [ ] parse image references
+  - [ ] fetch manifests and layer blobs
 
-### Stage 5 — Mount namespace and `/proc`
+- [ ] **Stage 10 — Layer unpacking**
+  - [ ] unpack layers in order
+  - [ ] build a runnable rootfs
 
-- create mount isolation,
-- mount `/proc` inside container.
+- [ ] **Stage 11 — Run from image**
+  - [ ] `gocker run alpine:latest /bin/sh`
 
-### Stage 6 — Rootfs execution
-
-- run commands inside a provided root filesystem.
-
-### Stage 7 — Cgroups v2
-
-- apply memory and CPU-related limits.
-
-### Stage 8 — Metadata store
-
-- persist basic information for containers and images.
-
-### Stage 9 — Image pulling
-
-- parse image references,
-- fetch manifests and layer blobs.
-
-### Stage 10 — Layer unpacking
-
-- unpack layers in order,
-- build a runnable rootfs.
-
-### Stage 11 — Run from image
-
-`gocker run alpine:latest /bin/sh`
-
-### Stage 12+ — Stretch goals
-
-- whiteouts,
-- bind mounts,
-- signal forwarding,
-- tiny init process,
-- networking,
-- OCI-aligned improvements.
+- [ ] **Stage 12+ — Stretch goals**
+  - [ ] whiteouts
+  - [ ] bind mounts
+  - [ ] signal forwarding
+  - [ ] tiny init process
+  - [ ] networking
+  - [ ] OCI-aligned improvements
 
 ---
 
