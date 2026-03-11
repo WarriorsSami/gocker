@@ -2,12 +2,19 @@ package runtime
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"syscall"
 )
+
+const GockerReExecEnv = "GOCKER_REEXEC_TOKEN"
+const reExecTokenLen = 16
 
 type RunCmdRequest struct {
 	Command string
@@ -20,13 +27,22 @@ func RunParent(ctx context.Context, req RunCmdRequest) error {
 		return fmt.Errorf("failed to create reexec pipe: %w", err)
 	}
 
+	// Generate a random one-time token to authenticate the re-exec child.
+	var tokenBytes [reExecTokenLen]byte
+	if _, err := rand.Read(tokenBytes[:]); err != nil {
+		must(r.Close())
+		must(w.Close())
+		return fmt.Errorf("failed to generate reexec token: %w", err)
+	}
+
 	// "--" stops cobra from interpreting the target command's flags (e.g. -c)
 	// as flags belonging to the "child" subcommand.
 	child := exec.CommandContext(ctx, "/proc/self/exe", append([]string{"child", "--", req.Command}, req.Args...)...)
 	child.Stdin = os.Stdin
 	child.Stdout = os.Stdout
 	child.Stderr = os.Stderr
-	child.ExtraFiles = []*os.File{r} // becomes fd 3 in the child and is also used to sync the parent and child during setup
+	child.Env = append(os.Environ(), fmt.Sprintf("%s=%s", GockerReExecEnv, hex.EncodeToString(tokenBytes[:])))
+	child.ExtraFiles = []*os.File{r} // becomes fd 3 in the child
 
 	if err := child.Start(); err != nil {
 		must(r.Close())
@@ -34,10 +50,15 @@ func RunParent(ctx context.Context, req RunCmdRequest) error {
 		return err
 	}
 
-	// Perform any parent-side setup here if needed (e.g. waiting for the child to signal it's ready via the pipe)
+	// Perform any parent-side setup here if needed.
 
-	must(r.Close()) // Not needed in the parent, close it to avoid leaks
-	must(w.Close()) // Signal the child that setup is done (if the child is waiting for this, it will unblock when we close the write end)
+	must(r.Close()) // not needed in the parent
+	// Write the token to the pipe; child reads & verifies it, then gets EOF as the "go" signal.
+	if _, err := w.Write(tokenBytes[:]); err != nil {
+		must(w.Close())
+		return fmt.Errorf("failed to write reexec token: %w", err)
+	}
+	must(w.Close())
 
 	if err := child.Wait(); err != nil {
 		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
@@ -55,14 +76,25 @@ func RunParent(ctx context.Context, req RunCmdRequest) error {
 }
 
 func RunChild(ctx context.Context, req RunCmdRequest) error {
-	// Block until the parent closes the write end of the pipe (fd 3), which signals that setup is complete
-	var buf [1]byte
-	must(syscall.Read(3, buf[:])) // returns when parent closes w -> EOF
+	// Read the random token from the pipe (blocks until the parent writes it).
+	var token [reExecTokenLen]byte
+	if _, err := io.ReadFull(os.NewFile(3, "pipe"), token[:]); err != nil {
+		return fmt.Errorf("failed to read reexec token: %w", err)
+	}
 	must(syscall.Close(3))
 
-	// Perform any child-side setup if needed
+	// Verify the token matches what the parent placed in the environment.
+	expected, err := hex.DecodeString(os.Getenv(GockerReExecEnv))
+	if err != nil || subtle.ConstantTimeCompare(token[:], expected) != 1 {
+		return fmt.Errorf("invalid reexec token: unauthorized invocation")
+	}
 
-	// Exec the target command, replacing the child process
+	// Don't leak the token into the execed process's environment.
+	must(os.Unsetenv(GockerReExecEnv))
+
+	// Perform any child-side setup if needed.
+
+	// Exec the target command, replacing the child process.
 	path, err := exec.LookPath(req.Command)
 	if err != nil {
 		return fmt.Errorf("failed to find command %q: %w", req.Command, err)

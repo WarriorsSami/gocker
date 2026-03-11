@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"gocker/internal/runtime"
-	"syscall"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -37,9 +37,11 @@ Example:
 	},
 }
 
+// isReExec returns true only when the process was launched by RunParent,
+// which injects GOCKER_REEXEC_TOKEN into the child's environment.
+// The token itself is verified by RunChild via the pipe.
 func isReExec() bool {
-	var st syscall.Stat_t
-	return syscall.Fstat(3, &st) == nil
+	return os.Getenv(runtime.GockerReExecEnv) != ""
 }
 
 func init() {
