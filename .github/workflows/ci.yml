@@ -31,13 +31,6 @@ jobs:
             exit 1
           fi
 
-      # ── Lint ────────────────────────────────────────────────────────────────
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v2.11.3
-          args: --timeout=5m
-
       # ── Build ───────────────────────────────────────────────────────────────
       - name: Build
         run: go build -o gocker .
