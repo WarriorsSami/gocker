@@ -40,6 +40,6 @@ jobs:
         run: go test ./internal/... -v -count=1
 
       # ── Integration tests ───────────────────────────────────────────────────
-      # Integration tests require the compiled binary and run Linux-only code.
+      # Integration tests require the compiled binary, root-mode and run Linux-only code.
       - name: Integration tests
-        run: go test ./tests/integration/... -v -count=1
+        run: make test-integration-root

@@ -410,6 +410,7 @@ Each stage is documented as a small lab note in the [`docs/`](docs/) folder.
 |-------|------|
 | 1 — Basic process execution | [docs/stage-01-basic-process-execution.md](docs/stage-01-basic-process-execution.md) |
 | 2 — Child re-exec model | [docs/stage-02-child-reexec-model.md](docs/stage-02-child-reexec-model.md) |
+| 3 — UTS namespace | [docs/stage-03-uts-namespace.md](docs/stage-03-uts-namespace.md) |
 
 Every note follows the same four-section format: **Goal**, **Build**, **Verify**, **Learn**.
 

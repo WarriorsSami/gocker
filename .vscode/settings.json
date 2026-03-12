@@ -1,0 +1,14 @@
+{
+  "go.testEnvVars": {
+    // Run integration tests via `sudo -n` so the VS Code Test Explorer
+    // can exercise paths that require CAP_SYS_ADMIN (e.g. UTS namespace).
+    //
+    // Prerequisites:
+    //   1. Build the binary first: make build
+    //   2. Allow passwordless sudo for the gocker binary:
+    //        sudo visudo -f /etc/sudoers.d/gocker
+    //      Add (replace <user> and <path> accordingly):
+    //        <user> ALL=(root) NOPASSWD: <path>/gocker
+    "GOCKER_TEST_USE_SUDO": "1"
+  }
+}

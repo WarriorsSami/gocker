@@ -14,6 +14,7 @@ import (
 )
 
 const GockerReExecEnv = "GOCKER_REEXEC_TOKEN"
+const GockerHostnameEnv = "GOCKER_HOSTNAME"
 const reExecTokenLen = 16
 
 type RunCmdRequest struct {
@@ -34,6 +35,8 @@ func RunParent(ctx context.Context, req RunCmdRequest) error {
 		must(w.Close())
 		return fmt.Errorf("failed to generate reexec token: %w", err)
 	}
+	// Derive a printable container hostname (12 hex chars) from random bytes.
+	hostname := hex.EncodeToString(tokenBytes[:6])
 
 	// "--" stops cobra from interpreting the target command's flags (e.g. -c)
 	// as flags belonging to the "child" subcommand.
@@ -41,12 +44,22 @@ func RunParent(ctx context.Context, req RunCmdRequest) error {
 	child.Stdin = os.Stdin
 	child.Stdout = os.Stdout
 	child.Stderr = os.Stderr
-	child.Env = append(os.Environ(), fmt.Sprintf("%s=%s", GockerReExecEnv, hex.EncodeToString(tokenBytes[:])))
+	child.Env = append(
+		os.Environ(),
+		fmt.Sprintf("%s=%s", GockerReExecEnv, hex.EncodeToString(tokenBytes[:])),
+		fmt.Sprintf("%s=%s", GockerHostnameEnv, hostname),
+	)
 	child.ExtraFiles = []*os.File{r} // becomes fd 3 in the child
+	child.SysProcAttr = &syscall.SysProcAttr{
+		Cloneflags: syscall.CLONE_NEWUTS,
+	}
 
 	if err := child.Start(); err != nil {
 		must(r.Close())
 		must(w.Close())
+		if errors.Is(err, syscall.EPERM) {
+			return fmt.Errorf("failed to create UTS namespace (CLONE_NEWUTS): %w; run as root or enable unprivileged user namespaces", err)
+		}
 		return err
 	}
 
@@ -89,10 +102,18 @@ func RunChild(ctx context.Context, req RunCmdRequest) error {
 		return fmt.Errorf("invalid reexec token: unauthorized invocation")
 	}
 
-	// Don't leak the token into the execed process's environment.
+	// Don't leak re-exec internals into the execed process's environment.
 	must(os.Unsetenv(GockerReExecEnv))
+	hostname := os.Getenv(GockerHostnameEnv)
+	must(os.Unsetenv(GockerHostnameEnv))
 
 	// Perform any child-side setup if needed.
+	if hostname == "" {
+		return fmt.Errorf("missing container hostname in environment")
+	}
+	if err := syscall.Sethostname([]byte(hostname)); err != nil {
+		return fmt.Errorf("failed to set container hostname %q: %w", hostname, err)
+	}
 
 	// Exec the target command, replacing the child process.
 	path, err := exec.LookPath(req.Command)
