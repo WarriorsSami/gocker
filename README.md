@@ -346,6 +346,47 @@ go test ./...
 
 Linux-only tests should use build tags where appropriate.
 
+### Running privileged integration tests
+
+Namespace tests (Stage 3 onward) require `CAP_SYS_ADMIN` to create new namespaces. The integration suite detects this automatically: tests are skipped in unprivileged environments, and run fully when privileges are available.
+
+**From the terminal:**
+
+```bash
+# Build artifacts as your normal user
+make build
+
+# Run all integration tests as root (sudo handles privilege escalation)
+make test-integration-root
+```
+
+**From VS Code Test Explorer:**
+
+The test runner calls `sudo -n ./gocker` when `GOCKER_TEST_USE_SUDO=1` is set.
+This is already configured in [.vscode/settings.json](.vscode/settings.json).
+
+One-time setup — allow passwordless `sudo` for the compiled binary:
+
+```bash
+sudo EDITOR=vim visudo -f /etc/sudoers.d/gocker
+```
+
+Add the following line (adjust `<user>` and `<path>`):
+
+```
+<user> ALL=(root) NOPASSWD: <path>/gocker
+```
+
+For example:
+
+```
+samibarbutdica ALL=(root) NOPASSWD: /home/samibarbutdica/development/gocker/gocker
+```
+
+After that, build once with `make build` then click **Run Test** in VS Code — it will use `sudo -n ./gocker` automatically.
+
+> **Why `sudo -n`?** The `-n` flag makes `sudo` non-interactive: it fails immediately if a password would be required, rather than hanging waiting for input. This is essential for editor-driven and CI test runners.
+
 ---
 
 ## Design principles
